@@ -11,7 +11,7 @@ import RadioButtonGroup from '../components/RadioButtonGroup';
 const JuryScoring: React.FC = () => {
   const { juryId } = useParams<{ juryId: string }>();
   const navigate = useNavigate();
-  const { addMultipleScores, isPerformanceScored } = useScores();
+  const { addMultipleScores, isPerformanceScored, isLoading: isContextLoading, error: contextError } = useScores();
   
   const juryMember = juryMembers.find(j => j.id === Number(juryId));
   const stage = juryMember ? stages.find(s => s.id === juryMember.stageId) : null;
@@ -21,6 +21,8 @@ const JuryScoring: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [scoredBands, setScoredBands] = useState<number[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     // Reset category scores when band changes
@@ -68,12 +70,13 @@ const JuryScoring: React.FC = () => {
     }));
   };
 
-  const handleSubmit = () => {
-    if (!selectedBandId || !juryMember) return;
+  const handleSubmit = async () => {
+    if (!selectedBandId || !juryMember || isSaving) return;
     
-    setSubmitting(true);
+    setIsSaving(true);
+    setSaveError(null);
+    setSubmitted(false);
     
-    // Create score objects for each category
     const scoresToSubmit: Score[] = Object.entries(categoryScores).map(([categoryId, value]) => ({
       bandId: selectedBandId,
       stageId: juryMember.stageId,
@@ -83,27 +86,40 @@ const JuryScoring: React.FC = () => {
       timestamp: Date.now()
     }));
     
-    // Add all scores at once
-    addMultipleScores(scoresToSubmit);
-    
-    // Update scored bands list
-    setScoredBands(prev => [...prev.filter(id => id !== selectedBandId), selectedBandId]);
-    
-    // Show success state
-    setSubmitting(false);
-    setSubmitted(true);
-    
-    // Automatically reset after 2 seconds for next band
-    setTimeout(() => {
-      setSelectedBandId(null);
-      setCategoryScores({});
-      setSubmitted(false);
-    }, 2000);
+    try {
+      await addMultipleScores(scoresToSubmit);
+      
+      setScoredBands(prev => [...prev.filter(id => id !== selectedBandId), selectedBandId]);
+      
+      setSubmitted(true);
+      
+      setTimeout(() => {
+        setSelectedBandId(null);
+        setCategoryScores({});
+        setSubmitted(false);
+      }, 2000);
+
+    } catch (error) {
+      console.error("Failed to submit scores:", error);
+      setSaveError("Scores opslaan mislukt. Probeer het opnieuw.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const isFormComplete = 
     selectedBandId && 
     filteredCategories.length === Object.keys(categoryScores).length;
+
+  if (isContextLoading) {
+    return <div className="container mx-auto px-4 py-8 text-center">Laden...</div>;
+  }
+  
+  if (contextError) {
+    return <div className="container mx-auto px-4 py-8 text-center text-red-600">Error: {contextError}</div>;
+  }
+
+  const isSubmitDisabled = !isFormComplete || isSaving || submitted;
 
   return (
     <div className="container mx-auto px-4 py-8 pb-20 md:pb-8">
@@ -177,27 +193,17 @@ const JuryScoring: React.FC = () => {
               ))}
               
               <div className="mt-8">
+                {saveError && <p className="text-red-600 text-center mb-4">{saveError}</p>}
                 <button
                   onClick={handleSubmit}
-                  disabled={!isFormComplete || submitting || submitted}
-                  className={`w-full py-3 px-4 rounded-lg font-semibold text-white ${
-                    isFormComplete && !submitting && !submitted
-                      ? 'bg-[#004380] hover:bg-[#003366]'
-                      : submitted
-                        ? 'bg-green-500'
-                        : 'bg-gray-400 cursor-not-allowed'
-                  } transition-colors duration-300`}
+                  disabled={isSubmitDisabled}
+                  className={`w-full mt-6 py-3 px-6 rounded-md text-white font-semibold transition-colors duration-300 ${
+                    isSubmitDisabled 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-[#004380] hover:bg-[#003366]'
+                  } ${isSaving ? 'opacity-75' : ''}`}
                 >
-                  {submitted ? (
-                    <span className="flex items-center justify-center">
-                      <Check size={20} className="mr-2" />
-                      Scores Opgeslagen!
-                    </span>
-                  ) : submitting ? (
-                    'Bezig met opslaan...'
-                  ) : (
-                    'Scores Opslaan'
-                  )}
+                  {isSaving ? 'Bezig met opslaan...' : submitted ? 'Opgeslagen!' : 'Scores Indienen'}
                 </button>
                 
                 {!isFormComplete && (

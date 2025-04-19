@@ -1,11 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Score, PerformanceScore, BandTotalScore } from '../types';
 import { bands, stages } from '../data/initialData';
+import { db } from '../firebase'; // Import the initialized Firestore instance
+import { 
+  collection, 
+  query, 
+  getDocs, 
+  writeBatch, 
+  doc,
+  serverTimestamp // Optional: for accurate timestamps
+} from "firebase/firestore";
 
 interface ScoreContextType {
   scores: Score[];
-  addScore: (score: Score) => void;
-  addMultipleScores: (scores: Score[]) => void;
+  addMultipleScores: (scores: Score[]) => Promise<void>; // Make async
   getPerformanceScores: (bandId: number, stageId: number) => PerformanceScore | null;
   getBandTotalScores: () => BandTotalScore[];
   getBandScoreByStage: (bandId: number, stageId: number) => {
@@ -14,66 +22,112 @@ interface ScoreContextType {
     total: number;
   } | null;
   isPerformanceScored: (bandId: number, stageId: number, juryType: 'muzikaliteit' | 'show') => boolean;
+  isLoading: boolean; // Add loading state
+  error: string | null; // Add error state
 }
 
 const ScoreContext = createContext<ScoreContextType | undefined>(undefined);
+const scoresCollectionRef = collection(db, "scores"); // Reference to the 'scores' collection
 
 export const ScoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [scores, setScores] = useState<Score[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load scores from localStorage on component mount
+  // Load scores from Firestore on component mount
   useEffect(() => {
-    const savedScores = localStorage.getItem('bandScores');
-    if (savedScores) {
-      setScores(JSON.parse(savedScores));
+    const fetchScores = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        console.log("Fetching scores from Firestore...");
+        const q = query(scoresCollectionRef); // Query all scores
+        const querySnapshot = await getDocs(q);
+        const fetchedScores: Score[] = [];
+        querySnapshot.forEach((doc) => {
+          // Assuming Firestore doc data matches the Score type
+          // Handle potential timestamp differences if necessary
+          fetchedScores.push({ id: doc.id, ...doc.data() } as Score); 
+        });
+        console.log(`Fetched ${fetchedScores.length} scores.`);
+        setScores(fetchedScores);
+      } catch (e) {
+        console.error("Error fetching scores from Firestore:", e);
+        setError("Kon scores niet laden vanuit de database.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchScores();
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+  const addMultipleScores = async (newScores: Score[]) => {
+    if (!newScores || newScores.length === 0) {
+      return;
     }
-  }, []);
-
-  // Save scores to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('bandScores', JSON.stringify(scores));
-  }, [scores]);
-
-  const addScore = (score: Score) => {
-    setScores(prevScores => {
-      // Replace score if it already exists for this band, stage, jury member, and category
-      const filteredScores = prevScores.filter(
-        s => !(s.bandId === score.bandId && 
-               s.stageId === score.stageId && 
-               s.juryMemberId === score.juryMemberId && 
-               s.categoryId === score.categoryId)
-      );
-      return [...filteredScores, score];
-    });
-  };
-
-  const addMultipleScores = (newScores: Score[]) => {
-    setScores(prevScores => {
-      // Create a copy of previous scores
-      const updatedScores = [...prevScores];
+    
+    // Use a Set for efficient lookup of existing score identifiers
+    const existingScoreKeys = new Set(scores.map(s => 
+        `${s.bandId}-${s.stageId}-${s.juryMemberId}-${s.categoryId}`
+    ));
+    const scoresToUpdateLocally: Score[] = [];
+    
+    // Use a Firestore batch for atomic writes
+    const batch = writeBatch(db);
+    
+    newScores.forEach(newScore => {
+      // Create a unique ID for the Firestore document based on identifiers
+      // This allows us to easily overwrite existing scores
+      const docId = `${newScore.bandId}-${newScore.stageId}-${newScore.juryMemberId}-${newScore.categoryId}`;
+      const docRef = doc(db, "scores", docId);
       
-      // Process each new score
-      newScores.forEach(newScore => {
-        // Find the index of an existing score with the same identifiers
-        const existingIndex = updatedScores.findIndex(
-          s => s.bandId === newScore.bandId && 
-               s.stageId === newScore.stageId && 
-               s.juryMemberId === newScore.juryMemberId && 
-               s.categoryId === newScore.categoryId
-        );
-        
-        // Replace or add the score
-        if (existingIndex !== -1) {
-          updatedScores[existingIndex] = newScore;
-        } else {
-          updatedScores.push(newScore);
-        }
+      // Prepare data for Firestore (add server timestamp if desired)
+      const scoreData = { 
+        ...newScore, 
+        // timestamp: serverTimestamp() // Use server timestamp for consistency
+        timestamp: Date.now() // Or keep using client timestamp
+      };
+      
+      batch.set(docRef, scoreData); // Use set to create or overwrite
+      
+      // Prepare for local state update
+      const scoreKey = `${newScore.bandId}-${newScore.stageId}-${newScore.juryMemberId}-${newScore.categoryId}`;
+       if (!existingScoreKeys.has(scoreKey)) {
+           scoresToUpdateLocally.push({ ...newScore, id: docId }); // Add id if new
+       } else {
+           // Find and replace logic for local state update
+           scoresToUpdateLocally.push({ ...newScore, id: docId });
+       }
+    });
+
+    try {
+      console.log(`Attempting to save ${newScores.length} scores to Firestore...`);
+      await batch.commit(); // Commit the batch write
+      console.log("Scores successfully saved to Firestore.");
+
+      // Update local state *after* successful Firestore write
+      setScores(prevScores => {
+          const updatedScores = [...prevScores];
+          scoresToUpdateLocally.forEach(scoreToUpdate => {
+              const existingIndex = updatedScores.findIndex(s => s.id === scoreToUpdate.id);
+              if (existingIndex !== -1) {
+                  updatedScores[existingIndex] = scoreToUpdate; // Replace existing
+              } else {
+                  updatedScores.push(scoreToUpdate); // Add new
+              }
+          });
+          return updatedScores;
       });
-      
-      return updatedScores;
-    });
-  };
 
+    } catch (e) {
+      console.error("Error saving scores to Firestore:", e);
+      setError("Kon scores niet opslaan in de database.");
+      // Optionally: revert local state changes if needed, but batch failure means nothing was written
+      throw e; // Re-throw error so the calling component knows it failed
+    }
+  };
+  
   const getPerformanceScores = (bandId: number, stageId: number): PerformanceScore | null => {
     const bandStageScores = scores.filter(s => s.bandId === bandId && s.stageId === stageId);
     
@@ -93,43 +147,42 @@ export const ScoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       grandTotal: 0,
     };
 
-    // Group scores by category and jury type
     bandStageScores.forEach(score => {
       const juryMember = score.juryMemberId;
-      // Check if jury member is muzikaliteit (1, 3, 5, 7) or show (2, 4, 6, 8)
       const juryType = juryMember % 2 === 1 ? 'muzikaliteit' : 'show';
+       // Ensure the category exists before assigning
+       if (!result.scores[juryType]) {
+           result.scores[juryType] = {};
+       }
       result.scores[juryType][score.categoryId] = score.value;
     });
 
-    // Calculate totals
     const muzikaliteitScores = Object.values(result.scores.muzikaliteit);
     const showScores = Object.values(result.scores.show);
     
-    result.totalMuzikaliteit = muzikaliteitScores.reduce((sum, score) => sum + score, 0);
-    result.totalShow = showScores.reduce((sum, score) => sum + score, 0);
+    result.totalMuzikaliteit = muzikaliteitScores.reduce((sum, scoreValue) => sum + (scoreValue || 0), 0);
+    result.totalShow = showScores.reduce((sum, scoreValue) => sum + (scoreValue || 0), 0);
     result.grandTotal = result.totalMuzikaliteit + result.totalShow;
 
     return result;
   };
 
   const isPerformanceScored = (bandId: number, stageId: number, juryType: 'muzikaliteit' | 'show'): boolean => {
-    // Get all scores for this band, stage
     const relevantScores = scores.filter(score => 
       score.bandId === bandId && 
       score.stageId === stageId
     );
 
-    // Filter by jury type
     const juryTypeScores = relevantScores.filter(score => {
       const isJuryTypeMuzikaliteit = score.juryMemberId % 2 === 1;
       return (juryType === 'muzikaliteit' && isJuryTypeMuzikaliteit) || 
              (juryType === 'show' && !isJuryTypeMuzikaliteit);
     });
-
-    // Check if we have 6 scores (one for each category)
-    // For muzikaliteit, we expect 6 scores (categories 1-6)
-    // For show, we expect 6 scores (categories 7-12)
-    return juryTypeScores.length === 6;
+    
+    // Check counts based on filteredCategories in JuryScoring page (which is 6)
+    // TODO: Consider making the expected count dynamic if categories change
+    const expectedCount = 6; 
+    return juryTypeScores.length >= expectedCount; // Use >= in case duplicates sneak in? Or === ? Let's assume === is desired.
   };
 
   const getBandScoreByStage = (bandId: number, stageId: number) => {
@@ -177,12 +230,13 @@ export const ScoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <ScoreContext.Provider value={{ 
       scores, 
-      addScore, 
       addMultipleScores,
       getPerformanceScores, 
       getBandTotalScores,
       getBandScoreByStage,
-      isPerformanceScored
+      isPerformanceScored,
+      isLoading,
+      error
     }}>
       {children}
     </ScoreContext.Provider>
