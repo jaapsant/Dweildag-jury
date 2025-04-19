@@ -20,7 +20,6 @@ const ScoresPage: React.FC = () => {
     <div className="container mx-auto px-4 py-6 pb-20 md:pb-6">
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-[#004380] flex items-center">
-          <Award className="mr-2" size={24} />
           Festival Ranglijst
         </h1>
         

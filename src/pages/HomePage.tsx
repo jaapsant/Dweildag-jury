@@ -23,14 +23,12 @@ const HomePage: React.FC = () => {
                 onClick={() => navigate('/jury')}
                 className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex items-center"
               >
-                <Music className="mr-2" size={20} />
                 Jury Beoordeling
               </button>
               <button 
                 onClick={() => navigate('/scores')}
                 className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex items-center"
               >
-                <Award className="mr-2" size={20} />
                 Bekijk Scores
               </button>
             </div>

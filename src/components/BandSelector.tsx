@@ -31,11 +31,6 @@ const BandSelector: React.FC<BandSelectorProps> = ({
         onClick={() => setIsOpen(!isOpen)}
       >
         {selectedBand ? selectedBand.name : 'Selecteer een band'}
-        <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-          <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="none" stroke="currentColor">
-            <path d="M7 7l3 3 3-3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
       </button>
 
       {isOpen && (
