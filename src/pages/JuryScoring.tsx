@@ -111,6 +111,9 @@ const JuryScoring: React.FC = () => {
     selectedBandId && 
     filteredCategories.length === Object.keys(categoryScores).length;
 
+  // Calculate the list of bands available for scoring
+  const availableBands = bands.filter(band => !scoredBands.includes(band.id));
+
   if (isContextLoading) {
     return <div className="container mx-auto px-4 py-8 text-center">Laden...</div>;
   }
@@ -123,8 +126,8 @@ const JuryScoring: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 pb-20 md:pb-8">
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="bg-[#004380] text-white p-4">
+      <div className="bg-white rounded-lg shadow-md">
+        <div className="bg-[#004380] text-white p-4 rounded-t-lg">
           <h1 className="text-xl font-bold">{juryMember.name}</h1>
           <div className="flex justify-between items-center">
             <p>{juryMember.type === 'muzikaliteit' ? 'Muzikaliteit' : 'Show'} Jurering</p>
@@ -135,18 +138,24 @@ const JuryScoring: React.FC = () => {
         <div className="p-4">
           <div className="mb-6">
             <label className="block text-gray-700 font-medium mb-2">
-              Selecteer Band
+              {availableBands.length > 0 ? 'Selecteer Band' : 'Alle Bands Beoordeeld'} 
             </label>
-            <BandSelector 
-              bands={bands} 
-              selectedBandId={selectedBandId} 
-              onSelectBand={setSelectedBandId} 
-            />
+            {availableBands.length > 0 ? ( // Conditionally render BandSelector
+              <BandSelector 
+                bands={availableBands} // Pass the filtered list
+                selectedBandId={selectedBandId} 
+                onSelectBand={setSelectedBandId} 
+              />
+            ) : (
+              <p className="text-center text-green-600 font-medium py-2">
+                Je hebt alle bands voor jouw categorie beoordeeld! 🎉
+              </p>
+            )}
             
             {scoredBands.length > 0 && (
               <div className="mt-2">
                 <p className="text-sm text-gray-600">
-                  Je hebt al {scoredBands.length} van de {bands.length} bands beoordeeld
+                  Beoordeelde bands ({scoredBands.length} van de {bands.length}):
                 </p>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {scoredBands.map(bandId => {
@@ -176,7 +185,6 @@ const JuryScoring: React.FC = () => {
                 <div key={category.id} className="mb-6 p-4 bg-gray-50 rounded-lg">
                   <div className="mb-2">
                     <h3 className="font-medium">{category.name}</h3>
-                    <p className="text-sm text-gray-600">{category.description}</p>
                   </div>
                   
                   <div className="flex items-center justify-between text-xs text-gray-500 px-2">
@@ -206,7 +214,7 @@ const JuryScoring: React.FC = () => {
                   {isSaving ? 'Bezig met opslaan...' : submitted ? 'Opgeslagen!' : 'Scores Indienen'}
                 </button>
                 
-                {!isFormComplete && (
+                {!isFormComplete && selectedBandId && ( // Ensure selectedBandId is not null
                   <p className="text-sm text-orange-600 mt-2">
                     Vul alle categorieën in om de scores op te slaan
                   </p>
@@ -215,9 +223,9 @@ const JuryScoring: React.FC = () => {
             </div>
           )}
           
-          {!selectedBandId && (
+          {!selectedBandId && availableBands.length > 0 && (
             <div className="text-center py-8 text-gray-500">
-              <p>Selecteer eerst een band om te beoordelen</p>
+              <p>Selecteer een band uit de lijst hierboven om te beoordelen</p>
             </div>
           )}
         </div>

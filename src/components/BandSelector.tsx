@@ -13,15 +13,10 @@ const BandSelector: React.FC<BandSelectorProps> = ({
   onSelectBand 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   
   const selectedBand = selectedBandId 
     ? bands.find(band => band.id === selectedBandId) 
     : null;
-
-  const filteredBands = bands.filter(band => 
-    band.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div className="relative">
@@ -35,17 +30,8 @@ const BandSelector: React.FC<BandSelectorProps> = ({
 
       {isOpen && (
         <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg">
-          <div className="p-2">
-            <input
-              type="text"
-              placeholder="Zoek een band..."
-              className="w-full p-2 border border-gray-300 rounded-md"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <ul className="max-h-60 overflow-y-auto">
-            {filteredBands.map((band) => (
+          <ul className="max-h-60 overflow-y-auto py-1">
+            {bands.map((band) => (
               <li
                 key={band.id}
                 className={`px-4 py-2 cursor-pointer hover:bg-blue-100 ${
@@ -54,7 +40,6 @@ const BandSelector: React.FC<BandSelectorProps> = ({
                 onClick={() => {
                   onSelectBand(band.id);
                   setIsOpen(false);
-                  setSearchTerm('');
                 }}
               >
                 {band.name}
