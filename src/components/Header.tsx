@@ -13,7 +13,7 @@ const Header: React.FC = () => {
             <h1 className="text-xl font-bold">Bemmelse Dweildag</h1>
           </div>
           
-          <nav className="hidden md:flex space-x-6">
+          <nav className="hidden md:flex space-x-4">
             <button 
               onClick={() => navigate('/')}
               className={`${location.pathname === '/' ? 'text-orange-300 font-semibold' : 'text-white'} hover:text-orange-200 transition-colors`}
@@ -38,6 +38,12 @@ const Header: React.FC = () => {
             >
               <span>Top 10</span>
             </button>
+            <button 
+              onClick={() => navigate('/manage-jury')}
+              className={`${location.pathname === '/manage-jury' ? 'text-orange-300 font-semibold' : 'text-white'} hover:text-orange-200 transition-colors`}
+            >
+              <span>Beheer Jury</span>
+            </button>
           </nav>
           
           <div className="flex md:hidden">
@@ -50,30 +56,36 @@ const Header: React.FC = () => {
       
       {/* Mobile menu at bottom of screen */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#004380] shadow-lg z-10 border-t border-blue-700">
-        <div className="flex justify-between items-center py-2 px-2">
+        <div className="flex justify-around items-center py-1 px-1">
           <button 
             onClick={() => navigate('/')}
-            className={`flex flex-col items-center px-3 py-1 ${location.pathname === '/' ? 'text-orange-300' : 'text-white'}`}
+            className={`flex flex-col items-center px-2 py-1 ${location.pathname === '/' ? 'text-orange-300' : 'text-white'}`}
           >
             <span className="text-xs mt-1">Home</span>
           </button>
           <button 
             onClick={() => navigate('/jury')}
-            className={`flex flex-col items-center px-3 py-1 ${location.pathname.includes('/jury') ? 'text-orange-300' : 'text-white'}`}
+            className={`flex flex-col items-center px-2 py-1 ${location.pathname.includes('/jury') ? 'text-orange-300' : 'text-white'}`}
           >
             <span className="text-xs mt-1">Jury</span>
           </button>
           <button 
             onClick={() => navigate('/scores')}
-            className={`flex flex-col items-center px-3 py-1 ${location.pathname === '/scores' ? 'text-orange-300' : 'text-white'}`}
+            className={`flex flex-col items-center px-2 py-1 ${location.pathname === '/scores' ? 'text-orange-300' : 'text-white'}`}
           >
             <span className="text-xs mt-1">Scores</span>
           </button>
           <button 
             onClick={() => navigate('/top-bands')}
-            className={`flex flex-col items-center px-3 py-1 ${location.pathname === '/top-bands' ? 'text-orange-300' : 'text-white'}`}
+            className={`flex flex-col items-center px-2 py-1 ${location.pathname === '/top-bands' ? 'text-orange-300' : 'text-white'}`}
           >
             <span className="text-xs mt-1">Top 10</span>
+          </button>
+          <button 
+            onClick={() => navigate('/manage-jury')}
+            className={`flex flex-col items-center px-2 py-1 ${location.pathname === '/manage-jury' ? 'text-orange-300' : 'text-white'}`}
+          >
+            <span className="text-xs mt-1">Beheer</span>
           </button>
         </div>
       </div>

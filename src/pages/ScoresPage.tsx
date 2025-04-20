@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useScores } from '../context/ScoreContext';
-import { stages, categories, juryMembers } from '../data/initialData';
+import { useJury } from '../context/JuryContext';
+import { stages, categories, bands } from '../data/initialData';
 import { TrendingUp, ChevronDown, ChevronUp, Award, Check, ArrowUp, ArrowDown } from 'lucide-react';
 
 // Define possible sort columns
@@ -8,7 +9,13 @@ type SortColumn = 'totalScore' | 'totalMuzikaliteit' | 'totalShow' | 'rank';
 type SortDirection = 'asc' | 'desc';
 
 const ScoresPage: React.FC = () => {
-  const { getBandTotalScores, getBandScoreByStage, scores, isLoading: isContextLoading } = useScores();
+  const { getBandTotalScores, getBandScoreByStage, scores, isLoading: scoresLoading, error: scoresError } = useScores();
+  const { juryMembers, isLoading: juryLoading, error: juryError } = useJury();
+  
+  // Combine loading/error
+  const isLoading = scoresLoading || juryLoading;
+  const error = scoresError || juryError;
+
   const [expandedBands, setExpandedBands] = useState<Record<number, boolean>>({});
   
   // --- Sorting State ---
@@ -17,9 +24,10 @@ const ScoresPage: React.FC = () => {
   // --- End Sorting State ---
 
   // Get initial scores (already sorted by totalScore desc by getBandTotalScores)
-  const initialBandScores = getBandTotalScores(); 
+  const initialBandScores = !isLoading && !error ? getBandTotalScores() : []; 
   
-  const totalExpectedForms = juryMembers.length;
+  // Calculate expected forms based on fetched jury members
+  const totalExpectedForms = !isLoading && !error ? juryMembers.length : 0; 
 
   // Calculate max scores (remains the same)
   let maxMuzScore = 0;
@@ -92,8 +100,11 @@ const ScoresPage: React.FC = () => {
     }));
   };
   
-  if (isContextLoading) {
+  if (isLoading) {
       return <div className="container mx-auto px-4 py-8 text-center">Laden...</div>;
+  }
+  if (error) {
+      return <div className="container mx-auto px-4 py-8 text-center text-red-600">Fout bij laden: {error}</div>;
   }
 
   // Helper component for sortable header cells
@@ -148,7 +159,7 @@ const ScoresPage: React.FC = () => {
               const bandSpecificScores = scores.filter(s => s.bandId === band.bandId);
               const uniqueJuryIds = new Set(bandSpecificScores.map(s => s.juryMemberId));
               const actualFormsCount = uniqueJuryIds.size;
-              const isComplete = actualFormsCount >= totalExpectedForms;
+              const isComplete = totalExpectedForms > 0 && actualFormsCount >= totalExpectedForms;
 
               // Determine rank based on sort order - if sorted by totalScore desc, use index+1
               // Otherwise, rank might not be meaningful or needs separate calculation

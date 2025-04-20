@@ -1,11 +1,18 @@
 import React from 'react';
 import { Award, Info, CheckCircle2, Check } from 'lucide-react'; // Import necessary icons
 import { useScores } from '../context/ScoreContext'; // Import useScores hook
-import { bands, juryMembers } from '../data/initialData'; // Import necessary data
+import { useJury } from '../context/JuryContext'; // Import useJury hook
+import { bands } from '../data/initialData'; // Import necessary data
 
 const TopBandsPage: React.FC = () => {
   // Fetch necessary data and states from context
-  const { getBandTotalScores, isLoading, error, scores } = useScores(); 
+  const { getBandTotalScores, isLoading: scoresLoading, error: scoresError, scores } = useScores(); 
+  // Get jury data
+  const { juryMembers, isLoading: juryLoading, error: juryError } = useJury(); 
+  
+  // Combine loading/error
+  const isLoading = scoresLoading || juryLoading;
+  const error = scoresError || juryError;
   
   // Get ALL band scores first for calculating maxes
   const allBandScores = (!isLoading && !error) ? getBandTotalScores() : [];
@@ -21,7 +28,7 @@ const TopBandsPage: React.FC = () => {
   }
 
   // Calculate total expected forms (same logic as HomePage)
-  const totalExpectedForms = juryMembers.length; 
+  const totalExpectedForms = !isLoading && !error ? juryMembers.length : 0; 
 
   // --- Calculate Overall Completion Status ---
   let isOverallComplete = false;
@@ -47,7 +54,7 @@ const TopBandsPage: React.FC = () => {
   
   // Handle Error State
   if (error) {
-    return <div className="container mx-auto px-4 py-8 text-center text-red-600">Kon scores niet laden: {error}</div>;
+    return <div className="container mx-auto px-4 py-8 text-center text-red-600">Fout bij laden: {error}</div>;
   }
 
   return (
@@ -82,12 +89,12 @@ const TopBandsPage: React.FC = () => {
         {topTenBands.length > 0 ? (
           <div className="space-y-4">
             {topTenBands.map((band, index) => {
-              // --- Calculate progress for this band ---
+              // Calculate progress using fetched juryMembers length
               const bandSpecificScores = scores.filter(s => s.bandId === band.bandId);
               const uniqueJuryIds = new Set(bandSpecificScores.map(s => s.juryMemberId));
               const actualFormsCount = uniqueJuryIds.size;
-              const isComplete = actualFormsCount >= totalExpectedForms;
-              // --- End calculation ---
+              // Use totalExpectedForms calculated above
+              const isComplete = totalExpectedForms > 0 && actualFormsCount >= totalExpectedForms;
 
               // --- Check for category wins ---
               const hasMaxMuz = band.totalMuzikaliteit === maxMuzScore && maxMuzScore > 0;

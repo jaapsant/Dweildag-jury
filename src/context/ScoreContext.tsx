@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Score, PerformanceScore, BandTotalScore } from '../types';
+import { Score, PerformanceScore, BandTotalScore, JuryMember } from '../types';
 import { bands, stages } from '../data/initialData';
 import { db } from '../firebase'; // Import the initialized Firestore instance
 import { 
@@ -8,8 +8,10 @@ import {
   getDocs, 
   writeBatch, 
   doc,
-  serverTimestamp // Optional: for accurate timestamps
+  serverTimestamp, // Optional: for accurate timestamps
+  updateDoc
 } from "firebase/firestore";
+import { useJury } from './JuryContext';
 
 interface ScoreContextType {
   scores: Score[];
@@ -21,7 +23,7 @@ interface ScoreContextType {
     show: number;
     total: number;
   } | null;
-  isPerformanceScored: (bandId: number, stageId: number, juryType: 'muzikaliteit' | 'show') => boolean;
+  isPerformanceScored: (bandId: number, stageId: number, juryMemberId: string | number) => boolean;
   isLoading: boolean; // Add loading state
   error: string | null; // Add error state
 }
@@ -33,6 +35,16 @@ export const ScoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [scores, setScores] = useState<Score[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use the Jury context to get juryMembers data
+  // Note: This assumes JuryProvider finishes loading before ScoreProvider needs this data.
+  // More robust loading handling might be needed if ScoreProvider loads first.
+  const { juryMembers, isLoading: juryLoading } = useJury(); 
+
+  // Update main loading state based on both contexts
+  useEffect(() => {
+      setIsLoading(juryLoading || scores === null); // Adjust loading condition
+  }, [juryLoading, scores]);
 
   // Load scores from Firestore on component mount
   useEffect(() => {
@@ -129,37 +141,48 @@ export const ScoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
   
   const getPerformanceScores = (bandId: number, stageId: number): PerformanceScore | null => {
+    // Don't run if jury data isn't loaded yet
+    if (juryLoading || juryMembers.length === 0) {
+        console.warn("getPerformanceScores called before juryMembers loaded.");
+        return null; 
+    }
+
     const bandStageScores = scores.filter(s => s.bandId === bandId && s.stageId === stageId);
     
     if (bandStageScores.length === 0) {
       return null;
     }
 
+    // Create a quick lookup map for jury member types
+    const juryTypeMap = new Map<string | number, 'muzikaliteit' | 'show'>();
+    juryMembers.forEach(jm => juryTypeMap.set(jm.id, jm.type));
+
     const result: PerformanceScore = {
       bandId,
       stageId,
-      scores: {
-        muzikaliteit: {},
-        show: {},
-      },
+      scores: { muzikaliteit: {}, show: {} },
       totalMuzikaliteit: 0,
       totalShow: 0,
       grandTotal: 0,
     };
 
     bandStageScores.forEach(score => {
-      const juryMember = score.juryMemberId;
-      const juryType = juryMember % 2 === 1 ? 'muzikaliteit' : 'show';
-       // Ensure the category exists before assigning
-       if (!result.scores[juryType]) {
-           result.scores[juryType] = {};
-       }
-      result.scores[juryType][score.categoryId] = score.value;
+      // Look up the jury member's actual type
+      const juryType = juryTypeMap.get(score.juryMemberId); 
+
+      if (juryType) { // Only process if jury member type is found
+          if (!result.scores[juryType]) { // Ensure bucket exists
+              result.scores[juryType] = {};
+          }
+          result.scores[juryType][score.categoryId] = score.value;
+      } else {
+          console.warn(`Could not find jury member type for ID: ${score.juryMemberId}`);
+      }
     });
 
+    // Calculation of totals remains the same
     const muzikaliteitScores = Object.values(result.scores.muzikaliteit);
     const showScores = Object.values(result.scores.show);
-    
     result.totalMuzikaliteit = muzikaliteitScores.reduce((sum, scoreValue) => sum + (scoreValue || 0), 0);
     result.totalShow = showScores.reduce((sum, scoreValue) => sum + (scoreValue || 0), 0);
     result.grandTotal = result.totalMuzikaliteit + result.totalShow;
@@ -167,22 +190,15 @@ export const ScoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return result;
   };
 
-  const isPerformanceScored = (bandId: number, stageId: number, juryType: 'muzikaliteit' | 'show'): boolean => {
+  const isPerformanceScored = (bandId: number, stageId: number, juryMemberId: string | number): boolean => {
+    const targetJuryIdString = String(juryMemberId); 
     const relevantScores = scores.filter(score => 
       score.bandId === bandId && 
-      score.stageId === stageId
+      score.stageId === stageId &&
+      String(score.juryMemberId) === targetJuryIdString 
     );
-
-    const juryTypeScores = relevantScores.filter(score => {
-      const isJuryTypeMuzikaliteit = score.juryMemberId % 2 === 1;
-      return (juryType === 'muzikaliteit' && isJuryTypeMuzikaliteit) || 
-             (juryType === 'show' && !isJuryTypeMuzikaliteit);
-    });
-    
-    // Check counts based on filteredCategories in JuryScoring page (which is 6)
-    // TODO: Consider making the expected count dynamic if categories change
     const expectedCount = 6; 
-    return juryTypeScores.length >= expectedCount; // Use >= in case duplicates sneak in? Or === ? Let's assume === is desired.
+    return relevantScores.length >= expectedCount; 
   };
 
   const getBandScoreByStage = (bandId: number, stageId: number) => {

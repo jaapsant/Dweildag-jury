@@ -9,7 +9,7 @@ export interface Stage {
 }
 
 export interface JuryMember {
-  id: number;
+  id: string;
   name: string;
   type: 'muzikaliteit' | 'show';
   stageId: number;

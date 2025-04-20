@@ -2,19 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Check, AlertTriangle, Eye, X, Pencil } from 'lucide-react';
 import { bands } from '../data/initialData';
-import { juryMembers, categories, stages } from '../data/initialData';
+import { categories, stages } from '../data/initialData';
 import { Score, PerformanceScore } from '../types';
 import { useScores } from '../context/ScoreContext';
+import { useJury } from '../context/JuryContext';
 import BandSelector from '../components/BandSelector';
 import RadioButtonGroup from '../components/RadioButtonGroup';
 
 const JuryScoring: React.FC = () => {
   const { juryId } = useParams<{ juryId: string }>();
   const navigate = useNavigate();
-  const { addMultipleScores, isPerformanceScored, isLoading: isContextLoading, error: contextError, getPerformanceScores } = useScores();
+  const { addMultipleScores, isLoading: scoresLoading, error: scoresError, getPerformanceScores, scores } = useScores();
+  const { juryMembers, isLoading: juryLoading, error: juryError } = useJury();
   
-  const juryMember = juryMembers.find(j => j.id === Number(juryId));
-  const stage = juryMember ? stages.find(s => s.id === juryMember.stageId) : null;
+  const isLoading = scoresLoading || juryLoading;
+  const error = scoresError || juryError;
+
+  const juryMember = !isLoading && !error ? juryMembers.find(j => j.id === juryId) : undefined;
+  const stage = !isLoading && juryMember ? stages.find(s => s.id === juryMember.stageId) : null;
   
   const [selectedBandId, setSelectedBandId] = useState<number | null>(null);
   const [categoryScores, setCategoryScores] = useState<Record<number, number>>({});
@@ -36,23 +41,36 @@ const JuryScoring: React.FC = () => {
   }, [selectedBandId, isReadOnly]);
 
   useEffect(() => {
-    if (isReadOnly && selectedBandId && juryMember) {
-        const scores = getPerformanceScores(selectedBandId, juryMember.stageId);
-        setViewingScores(scores);
+    if (isReadOnly && selectedBandId && juryMember && !isLoading && !error) {
+        const scoresData = getPerformanceScores(selectedBandId, juryMember.stageId);
+        setViewingScores(scoresData);
         setCategoryScores({});
     }
-  }, [isReadOnly, selectedBandId, juryMember, getPerformanceScores]);
+  }, [isReadOnly, selectedBandId, juryMember, getPerformanceScores, isLoading, error]);
 
   useEffect(() => {
-    if (!juryMember) return;
+    if (!juryMember || isLoading || error || !scores) {
+        setScoredBands([]);
+        return;
+    }
+    
+    const expectedScoresPerBandForm = 6;
     const scored: number[] = [];
+    
     bands.forEach(band => {
-      if (!isContextLoading && isPerformanceScored(band.id, juryMember.stageId, juryMember.type)) {
+      const memberBandScores = scores.filter(s => 
+          s.bandId === band.id &&
+          String(s.juryMemberId) === String(juryMember.id) &&
+          s.stageId === juryMember.stageId
+      );
+      
+      if (memberBandScores.length >= expectedScoresPerBandForm) {
         scored.push(band.id);
       }
     });
+    
     setScoredBands(scored);
-  }, [juryMember, isPerformanceScored, isContextLoading, bands]);
+  }, [juryMember, scores, isLoading, error, bands]);
 
   const handleSelectBandForScoring = (bandId: number | null) => {
     setIsReadOnly(false);
@@ -89,12 +107,20 @@ const JuryScoring: React.FC = () => {
     setViewingScores(null);
   };
 
-  if (!juryMember || !stage) {
+  if (isLoading) {
+    return <div className="container mx-auto px-4 py-8 text-center">Gegevens laden...</div>;
+  }
+  
+  if (error) {
+    return <div className="container mx-auto px-4 py-8 text-center text-red-600">Fout bij laden: {error}</div>;
+  }
+
+  if (!juryMember) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
         <AlertTriangle size={48} className="mx-auto text-orange-500 mb-4" />
         <h2 className="text-2xl font-bold mb-4">Jurylid niet gevonden</h2>
-        <p className="mb-6">Het opgegeven jurylid-ID bestaat niet.</p>
+        <p className="mb-6">Controleer het ID of ga terug naar de selectie.</p>
         <button 
           onClick={() => navigate('/jury')}
           className="bg-[#004380] hover:bg-[#003366] text-white font-bold py-2 px-6 rounded"
@@ -103,6 +129,10 @@ const JuryScoring: React.FC = () => {
         </button>
       </div>
     );
+  }
+
+  if (!stage) {
+    return <div className="container mx-auto px-4 py-8 text-center text-red-600">Fout: Podium niet gevonden voor dit jurylid.</div>;
   }
 
   const filteredCategories = categories.filter(c => c.type === juryMember.type);
@@ -160,25 +190,14 @@ const JuryScoring: React.FC = () => {
 
   const availableBands = bands.filter(band => !scoredBands.includes(band.id));
 
-  if (isContextLoading) {
-    return <div className="container mx-auto px-4 py-8 text-center">Laden...</div>;
-  }
-  
-  if (contextError) {
-    return <div className="container mx-auto px-4 py-8 text-center text-red-600">Error: {contextError}</div>;
-  }
-
   const isSubmitDisabled = !isFormComplete || isSaving || submitted || isReadOnly;
 
-  // Calculate total score for the current mode
   let totalScoreToShow: number | null = null;
-  if (isReadOnly && viewingScores && juryMember) {
-      // Use the specific total based on jury type from the fetched scores
+  if (isReadOnly && viewingScores) {
       totalScoreToShow = juryMember.type === 'muzikaliteit' 
           ? viewingScores.totalMuzikaliteit 
           : viewingScores.totalShow;
   } else if (!isReadOnly) {
-      // Calculate from the current form state when editing
       totalScoreToShow = Object.values(categoryScores).reduce((sum, score) => sum + (score || 0), 0);
   }
 
@@ -260,8 +279,8 @@ const JuryScoring: React.FC = () => {
                 <h2 className="text-lg font-semibold">
                     {isReadOnly ? 'Bekeken Beoordeling' : 'Beoordeling'} voor {bands.find(b => b.id === selectedBandId)?.name}
                 </h2>
-                <div className="flex items-center gap-3"> {/* Container for total and button */}
-                  {isReadOnly && totalScoreToShow !== null && ( // Display total in read-only mode
+                <div className="flex items-center gap-3">
+                  {isReadOnly && totalScoreToShow !== null && (
                       <div className="text-right">
                           <span className="text-sm text-gray-600 font-medium">Totaal ({juryMember?.type === 'muzikaliteit' ? 'Muz.' : 'Show'}):</span>
                           <span className="ml-1.5 text-xl font-bold text-[#004380]">
@@ -269,7 +288,7 @@ const JuryScoring: React.FC = () => {
                           </span>
                       </div>
                   )}
-                  {isReadOnly && ( // Show Edit button only in read-only mode
+                  {isReadOnly && (
                       <button
                           onClick={handleEditScores}
                           title="Bewerk deze score"
@@ -282,22 +301,19 @@ const JuryScoring: React.FC = () => {
                 </div>
               </div>
               
-              {/* --- Category Mapping --- */}
               {filteredCategories.map((category, index) => {
                 const scoreValue = isReadOnly 
                     ? viewingScores?.scores?.[juryMember.type]?.[category.id] ?? null 
                     : categoryScores[category.id] || null;
                 
-                // Define score options based on index
                 const scoreOptions = index === 0 
-                    ? [2, 4, 6, 8, 10, 12, 14] // First category scores
-                    : undefined; // Use default (1-7) for others
+                    ? [2, 4, 6, 8, 10, 12, 14]
+                    : undefined;
 
                 return (
                   <div key={category.id} className={`mb-4 p-4 rounded-lg ${isReadOnly ? 'bg-gray-100' : 'bg-gray-50'}`}>
                     <h3 className="font-medium mb-2">{category.name}</h3>
                     
-                    {/* Read Only View */}
                     {isReadOnly && (
                         <div className="flex items-center justify-center h-10">
                            {scoreValue !== null ? (
@@ -308,14 +324,13 @@ const JuryScoring: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Editable View */}
                     {!isReadOnly && (
                         <>
                             <RadioButtonGroup
                                 name={`category-${category.id}`}
                                 value={scoreValue}
                                 onChange={(value) => handleScoreChange(category.id, value)}
-                                scores={scoreOptions} // Pass the specific scores array
+                                scores={scoreOptions}
                             />
                         </>
                     )}
@@ -325,7 +340,6 @@ const JuryScoring: React.FC = () => {
               
               {!isReadOnly && (
                   <div className="mt-8">
-                      {/* --- Display Current Total Score (Editable) --- */}
                       <div className="text-right mb-4 pr-2">
                           <span className="text-gray-600 font-medium">Totaal:</span>
                           <span className="ml-2 text-2xl font-bold text-[#004380]">
@@ -333,7 +347,6 @@ const JuryScoring: React.FC = () => {
                           </span>
                       </div>
 
-                      {/* --- Submit Button and Error/Info Messages --- */}
                       {saveError && <p className="text-red-600 text-center mb-4">{saveError}</p>}
                       <button
                           onClick={handleSubmit}
