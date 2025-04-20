@@ -57,4 +57,6 @@ export interface BandTotalScore {
     };
   };
   totalScore: number;
+  totalMuzikaliteit: number;
+  totalShow: number;
 }

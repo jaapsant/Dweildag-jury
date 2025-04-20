@@ -198,11 +198,18 @@ export const ScoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const getBandTotalScores = (): BandTotalScore[] => {
     return bands.map(band => {
+      // Initialize overall totals for this band
+      let totalMuzikaliteitOverall = 0;
+      let totalShowOverall = 0;
+      let totalScoreOverall = 0; // Keep track of overall score too
+
       const bandTotalScore: BandTotalScore = {
         bandId: band.id,
         bandName: band.name,
         stageScores: {},
-        totalScore: 0,
+        totalScore: 0, // Will be updated below
+        totalMuzikaliteit: 0, // Initialize added property
+        totalShow: 0, // Initialize added property
       };
 
       stages.forEach(stage => {
@@ -213,8 +220,12 @@ export const ScoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             show: performanceScore.totalShow,
             total: performanceScore.grandTotal,
           };
-          bandTotalScore.totalScore += performanceScore.grandTotal;
+          // Accumulate totals
+          totalMuzikaliteitOverall += performanceScore.totalMuzikaliteit;
+          totalShowOverall += performanceScore.totalShow;
+          totalScoreOverall += performanceScore.grandTotal;
         } else {
+          // Still add stage entry even if no score, with zeros
           bandTotalScore.stageScores[stage.id] = {
             muzikaliteit: 0,
             show: 0,
@@ -222,6 +233,11 @@ export const ScoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           };
         }
       });
+
+      // Assign calculated overall totals to the band object
+      bandTotalScore.totalMuzikaliteit = totalMuzikaliteitOverall;
+      bandTotalScore.totalShow = totalShowOverall;
+      bandTotalScore.totalScore = totalScoreOverall; // Use the sum calculated here
 
       return bandTotalScore;
     }).sort((a, b) => b.totalScore - a.totalScore); // Sort by total score descending
