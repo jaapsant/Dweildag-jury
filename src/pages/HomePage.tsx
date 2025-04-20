@@ -1,12 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check } from 'lucide-react';
+import { Check, Award } from 'lucide-react';
 import { juryMembers, stages, bands } from '../data/initialData';
 import { useScores } from '../context/ScoreContext';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { getBandTotalScores, isLoading, error, isPerformanceScored } = useScores();
+  const { getBandTotalScores, isLoading, error, isPerformanceScored, scores } = useScores();
   
   // Group jury members by stageId
   const juryByStage = juryMembers.reduce((acc, juryMember) => {
@@ -18,10 +18,20 @@ const HomePage: React.FC = () => {
     return acc;
   }, {} as Record<number, typeof juryMembers>);
 
-  // Get the top 3 bands
-  const topBands = (!isLoading && !error) ? getBandTotalScores().slice(0, 3) : [];
+  // Get ALL band scores first for calculating maxes
+  const allBandScores = (!isLoading && !error) ? getBandTotalScores() : [];
+  const topBands = allBandScores.slice(0, 3); // Then slice for display
+
+  // Calculate max scores across all bands
+  let maxMuzScore = 0;
+  let maxShowScore = 0;
+  if (allBandScores.length > 0) {
+      maxMuzScore = Math.max(...allBandScores.map(b => b.totalMuzikaliteit));
+      maxShowScore = Math.max(...allBandScores.map(b => b.totalShow));
+  }
 
   const totalBands = bands.length; // Get total number of bands
+  const totalExpectedForms = juryMembers.length; // Total expected forms per band
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -30,7 +40,7 @@ const HomePage: React.FC = () => {
           <div className="container mx-auto text-center">
             <h1 className="text-3xl sm:text-4xl font-bold mb-2">Bemmelse Dweildag</h1>
             <p className="text-lg sm:text-xl mb-6">Welkom bij de jury-app voor de Bemmelse Dweildag 2025</p>
-            <div className="inline-flex space-x-2">
+            <div className="inline-flex space-x-2">v
               <button 
                 onClick={() => navigate('/jury')}
                 className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
@@ -111,28 +121,77 @@ const HomePage: React.FC = () => {
               {error && <p className="text-center text-red-600">Kon scores niet laden: {error}</p>}
               {!isLoading && !error && topBands.length > 0 ? (
                 <div className="space-y-4">
-                  {topBands.map((band, index) => (
-                    <div 
-                      key={band.bandId}
-                      className={`p-4 rounded-lg ${
-                        index === 0 
-                          ? 'bg-yellow-100 border border-yellow-300'
-                          : index === 1
-                            ? 'bg-gray-100 border border-gray-300'
-                            : 'bg-orange-100 border border-orange-300'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-bold">{index + 1}. {band.bandName}</p>
-                          <p className="text-sm text-gray-600">Totaal score over alle podia</p>
-                        </div>
-                        <div className="text-2xl font-bold">
-                          {band.totalScore}
+                  {topBands.map((band, index) => {
+                    // --- Calculate progress for this band ---
+                    const bandSpecificScores = scores.filter(s => s.bandId === band.bandId);
+                    const uniqueJuryIds = new Set(bandSpecificScores.map(s => s.juryMemberId));
+                    const actualFormsCount = uniqueJuryIds.size;
+                    const isComplete = actualFormsCount >= totalExpectedForms;
+                    // --- End calculation ---
+
+                    // --- Check for category wins ---
+                    const hasMaxMuz = band.totalMuzikaliteit === maxMuzScore && maxMuzScore > 0;
+                    const hasMaxShow = band.totalShow === maxShowScore && maxShowScore > 0;
+                    // --- End check ---
+
+                    return (
+                      <div 
+                        key={band.bandId}
+                        className={`p-4 rounded-lg ${
+                          index === 0 
+                            ? 'bg-yellow-100 border border-yellow-300'
+                            : index === 1
+                              ? 'bg-gray-100 border border-gray-300'
+                              : 'bg-orange-100 border border-orange-300'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start">
+                          {/* Left side: Rank, Name, Progress */}
+                          <div>
+                            <div className="flex items-center mb-1">
+                               <p className="font-bold">{index + 1}. {band.bandName}</p>
+                               <span className="ml-2"> 
+                                {isComplete ? (
+                                   <Check size={14} className="text-green-600" title={`Alle ${totalExpectedForms} juryformulieren ingevoerd`} />
+                                ) : (
+                                   <span className="text-xs text-gray-500" title={`${actualFormsCount} van ${totalExpectedForms} juryformulieren ingevoerd`}>
+                                      ({actualFormsCount}/{totalExpectedForms})
+                                   </span>
+                                )}
+                               </span>
+                            </div>
+                          </div>
+                          {/* Right side: Total Score + Award Badges */}
+                          <div className="flex flex-col items-end ml-2">
+                              <div className="text-2xl font-bold">
+                                  {band.totalScore}
+                              </div>
+                              {/* Award Badges container */}
+                              <div className="flex items-center mt-0.5 space-x-1.5">
+                                  {hasMaxMuz && (
+                                      <span 
+                                        className="flex items-center bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded text-xs font-medium" 
+                                        title="Winnaar Muzikaliteit"
+                                      >
+                                          <Award size={12} className="mr-0.5 flex-shrink-0" />
+                                          Muz.
+                                      </span>
+                                  )}
+                                  {hasMaxShow && (
+                                      <span 
+                                        className="flex items-center bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded text-xs font-medium" 
+                                        title="Winnaar Show"
+                                      >
+                                          <Award size={12} className="mr-0.5 flex-shrink-0" />
+                                           Show
+                                      </span>
+                                  )}
+                              </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                   })}
                 </div>
               ) : null}
               {!isLoading && !error && topBands.length === 0 && (
