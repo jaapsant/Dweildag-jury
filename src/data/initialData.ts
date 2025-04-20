@@ -7,9 +7,9 @@ export const bands: Band[] = Array.from({ length: 20 }, (_, i) => ({
 
 export const stages: Stage[] = [
   { id: 1, name: 'Hoofdpodium' },
-  { id: 2, name: 'Marktplein' },
-  { id: 3, name: 'Kerkplein' },
-  { id: 4, name: 'Dorpsstraat' },
+  { id: 2, name: 'Cafe 61' },
+  { id: 3, name: 'Het Wapen' },
+  { id: 4, name: 'Marktplein' },
 ];
 
 export const juryMembers: JuryMember[] = [
@@ -37,70 +37,70 @@ export const categories: Category[] = [
   },
   { 
     id: 2, 
-    name: 'Samenspel', 
+    name: 'Balans', 
     description: 'Hoe goed de band samenwerkt', 
     type: 'muzikaliteit' 
   },
   { 
     id: 3, 
-    name: 'Moeilijkheidsgraad', 
-    description: 'Complexiteit van het repertoire', 
+    name: 'Diversiteit van de arrangementen', 
+    description: 'Hoe goed de band de verschillende arrangementen aankan', 
     type: 'muzikaliteit' 
   },
   { 
     id: 4, 
+    name: 'Uitvoering', 
+    description: 'Hoe goed de band de arrangementen uitvoert', 
+    type: 'muzikaliteit' 
+  },
+  { 
+    id: 5, 
     name: 'Dynamiek', 
     description: 'Variatie in volume en intensiteit', 
     type: 'muzikaliteit' 
   },
   { 
-    id: 5, 
-    name: 'Originaliteit', 
-    description: 'Unieke elementen in muzikale uitvoering', 
-    type: 'muzikaliteit' 
-  },
-  { 
     id: 6, 
-    name: 'Ritmische precisie', 
-    description: 'Nauwkeurigheid in timing', 
+    name: 'Ritmiek', 
+    description: 'Hoe goed de band de ritmiek aankan', 
     type: 'muzikaliteit' 
   },
   
   // Show categories
   { 
     id: 7, 
-    name: 'Presentatie', 
-    description: 'Algemene uitstraling en houding', 
+    name: 'Interactie', 
+    description: 'Hoe goed de band de publiek aankan', 
     type: 'show' 
   },
   { 
     id: 8, 
-    name: 'Choreografie', 
-    description: 'Bewegingen en formaties', 
+    name: 'Enthousiasme', 
+    description: 'Hoe enthousiast de band is', 
     type: 'show' 
   },
   { 
     id: 9, 
-    name: 'Publiek interactie', 
-    description: 'Betrekken van het publiek', 
+    name: 'Presentatie/uitstraling', 
+    description: 'Hoe goed de band zich presenteert', 
     type: 'show' 
   },
   { 
     id: 10, 
-    name: 'Kostuums', 
-    description: 'Kwaliteit en gepastheid van de kostuums', 
+    name: 'Amusementswaarde', 
+    description: 'Hoe leuk de show is', 
     type: 'show' 
   },
   { 
     id: 11, 
-    name: 'Originaliteit', 
-    description: 'Unieke elementen in de show', 
+    name: 'Diversiteit van het repertoire', 
+    description: 'Hoe goed de band de verschillende arrangementen aankan', 
     type: 'show' 
   },
   { 
     id: 12, 
-    name: 'Energie', 
-    description: 'Enthousiasme en levendigheid', 
+    name: 'Originaliteit', 
+    description: 'Unieke elementen in de show', 
     type: 'show' 
   },
 ];
