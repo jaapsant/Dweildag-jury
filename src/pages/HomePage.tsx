@@ -1,11 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { juryMembers, stages } from '../data/initialData';
+import { juryMembers, stages, bands } from '../data/initialData';
 import { useScores } from '../context/ScoreContext';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { getBandTotalScores, isLoading, error } = useScores();
+  const { getBandTotalScores, isLoading, error, isPerformanceScored } = useScores();
   
   // Group jury members by stageId
   const juryByStage = juryMembers.reduce((acc, juryMember) => {
@@ -19,6 +19,8 @@ const HomePage: React.FC = () => {
 
   // Get the top 3 bands
   const topBands = (!isLoading && !error) ? getBandTotalScores().slice(0, 3) : [];
+
+  const totalBands = bands.length; // Get total number of bands
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -55,23 +57,38 @@ const HomePage: React.FC = () => {
                   <div key={stage.id}>
                     <h3 className="text-lg font-semibold mb-3 p-2 bg-blue-50 rounded-t-md text-blue-800">{stage.name}</h3>
                     <div className="space-y-2 border border-t-0 rounded-b-md p-3">
-                      {(juryByStage[stage.id] || []).map(member => (
-                        <button
-                          key={member.id}
-                          role="link"
-                          className="w-full p-2 rounded-md bg-white border border-gray-200 hover:bg-blue-50 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50 transition duration-150 cursor-pointer flex justify-between items-center text-left"
-                          onClick={() => navigate(`/jury/${member.id}`)}
-                        >
-                          <span className="font-medium text-gray-800">{member.name}</span>
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                            member.type === 'muzikaliteit' 
-                              ? 'text-blue-700 bg-blue-100' 
-                              : 'text-green-700 bg-green-100'
-                          }`}>
-                            {member.type === 'muzikaliteit' ? 'Muzikaliteit' : 'Show'}
-                          </span>
-                        </button>
-                      ))}
+                      {(juryByStage[stage.id] || []).map(member => {
+                        // Calculate scored count for this member
+                        const scoredCount = bands.filter(band => 
+                            !isLoading && isPerformanceScored(band.id, member.stageId, member.type)
+                        ).length;
+
+                        return (
+                          <button
+                            key={member.id}
+                            role="link"
+                            className="w-full p-2 rounded-md bg-white border border-gray-200 hover:bg-blue-50 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50 transition duration-150 cursor-pointer flex justify-between items-center text-left"
+                            onClick={() => navigate(`/jury/${member.id}`)}
+                          >
+                            {/* Left side: Name and Score Count */}
+                            <div className="flex items-center">
+                                <span className="font-medium text-gray-800">{member.name}</span>
+                                {/* Added score count indicator */}
+                                <span className="ml-2 text-xs text-gray-400">
+                                    ({scoredCount}/{totalBands})
+                                </span>
+                            </div>
+                            {/* Right side: Type Label */}
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              member.type === 'muzikaliteit' 
+                                ? 'text-blue-700 bg-blue-100' 
+                                : 'text-green-700 bg-green-100'
+                            }`}>
+                              {member.type === 'muzikaliteit' ? 'Muzikaliteit' : 'Show'}
+                            </span>
+                          </button>
+                        );
+                      })}
                       {(juryByStage[stage.id] || []).length === 0 && (
                           <p className="text-sm text-gray-400 italic px-2 py-1">Geen juryleden toegewezen</p>
                       )}
