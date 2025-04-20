@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Check } from 'lucide-react';
 import { juryMembers, stages, bands } from '../data/initialData';
 import { useScores } from '../context/ScoreContext';
 
@@ -38,6 +39,7 @@ const JuryPage: React.FC = () => {
                   const scoredCount = bands.filter(band => 
                     !isLoading && isPerformanceScored(band.id, jury.stageId, jury.type)
                   ).length;
+                  const isComplete = scoredCount === totalBands;
 
                   return (
                     <button
@@ -48,9 +50,13 @@ const JuryPage: React.FC = () => {
                     >
                       <div className="flex items-center">
                         <span className="font-medium text-gray-800">{jury.name}</span>
-                        <span className="ml-2 text-xs text-gray-400">
-                          ({scoredCount}/{totalBands})
-                        </span>
+                        {isComplete ? (
+                          <Check size={16} className="ml-2 text-green-600" />
+                        ) : (
+                          <span className="ml-2 text-xs text-gray-400">
+                            ({scoredCount}/{totalBands})
+                          </span>
+                        )}
                       </div>
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                         jury.type === 'muzikaliteit' 

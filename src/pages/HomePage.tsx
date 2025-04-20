@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Check } from 'lucide-react';
 import { juryMembers, stages, bands } from '../data/initialData';
 import { useScores } from '../context/ScoreContext';
 
@@ -58,10 +59,10 @@ const HomePage: React.FC = () => {
                     <h3 className="text-lg font-semibold mb-3 p-2 bg-blue-50 rounded-t-md text-blue-800">{stage.name}</h3>
                     <div className="space-y-2 border border-t-0 rounded-b-md p-3">
                       {(juryByStage[stage.id] || []).map(member => {
-                        // Calculate scored count for this member
                         const scoredCount = bands.filter(band => 
                             !isLoading && isPerformanceScored(band.id, member.stageId, member.type)
                         ).length;
+                        const isComplete = scoredCount === totalBands;
 
                         return (
                           <button
@@ -70,13 +71,17 @@ const HomePage: React.FC = () => {
                             className="w-full p-2 rounded-md bg-white border border-gray-200 hover:bg-blue-50 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50 transition duration-150 cursor-pointer flex justify-between items-center text-left"
                             onClick={() => navigate(`/jury/${member.id}`)}
                           >
-                            {/* Left side: Name and Score Count */}
+                            {/* Left side: Name and Indicator */}
                             <div className="flex items-center">
                                 <span className="font-medium text-gray-800">{member.name}</span>
-                                {/* Added score count indicator */}
-                                <span className="ml-2 text-xs text-gray-400">
-                                    ({scoredCount}/{totalBands})
-                                </span>
+                                {/* Conditional Indicator */}
+                                {isComplete ? (
+                                    <Check size={16} className="ml-2 text-green-600" />
+                                ) : (
+                                    <span className="ml-2 text-xs text-gray-400">
+                                        ({scoredCount}/{totalBands})
+                                    </span>
+                                )}
                             </div>
                             {/* Right side: Type Label */}
                             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
