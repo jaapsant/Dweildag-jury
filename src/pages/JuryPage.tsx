@@ -1,50 +1,55 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { juryMembers } from '../data/initialData';
+import { juryMembers, stages } from '../data/initialData';
 
 const JuryPage: React.FC = () => {
   const navigate = useNavigate();
 
-  // Group jury members by stage
+  // Group jury members by stageId
   const juryByStage = juryMembers.reduce((acc, juryMember) => {
-    if (!acc[juryMember.stageId]) {
-      acc[juryMember.stageId] = [];
+    const stageId = juryMember.stageId;
+    if (!acc[stageId]) {
+      acc[stageId] = [];
     }
-    acc[juryMember.stageId].push(juryMember);
+    acc[stageId].push(juryMember);
     return acc;
   }, {} as Record<number, typeof juryMembers>);
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold text-[#004380] mb-6">Jury Selectie</h1>
+      <h1 className="text-2xl font-bold text-[#004380] mb-4">Jury Selectie</h1>
       
-      <p className="mb-6 text-gray-700">
+      <p className="mb-8 text-gray-700">
         Selecteer hieronder je naam om te beginnen met het beoordelen van bands op jouw podium.
       </p>
       
-      <div className="max-w-lg mx-auto">
-        {Object.entries(juryByStage).map(([stageId, juryList]) => (
-          <div key={stageId} className="mb-8">
-            <h2 className="text-xl font-semibold mb-4 text-[#004380]">
-              Podium {stageId}
-            </h2>
-            
-            <div className="space-y-3"> 
-              {juryList.map(jury => (
-                <div key={jury.id} className="flex items-center space-x-4"> 
-                  <span className="w-24 text-sm font-medium text-gray-600 shrink-0">
-                    {jury.type === 'muzikaliteit' ? 'Muzikaliteit' : 'Show'}
-                  </span>
+      <div className="space-y-6">
+        {stages.map(stage => (
+          (juryByStage[stage.id] && juryByStage[stage.id].length > 0) ? (
+            <div key={stage.id} className="bg-white rounded-lg shadow-md">
+              <h2 className="text-lg font-semibold p-3 bg-blue-50 rounded-t-md text-blue-800">{stage.name}</h2>
+              
+              <div className="space-y-2 border border-t-0 rounded-b-md p-3">
+                {(juryByStage[stage.id] || []).map(jury => (
                   <button
+                    key={jury.id}
+                    role="link"
+                    className="w-full p-2 rounded-md bg-white border border-gray-200 hover:bg-blue-50 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50 transition duration-150 cursor-pointer flex justify-between items-center text-left"
                     onClick={() => navigate(`/jury/${jury.id}`)}
-                    className="flex-grow bg-[#004380] hover:bg-[#003366] text-white py-2 px-4 rounded-md transition-colors duration-300 text-left"
                   >
-                    {jury.name}
+                    <span className="font-medium text-gray-800">{jury.name}</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      jury.type === 'muzikaliteit' 
+                        ? 'text-blue-700 bg-blue-100' 
+                        : 'text-green-700 bg-green-100'
+                    }`}>
+                      {jury.type === 'muzikaliteit' ? 'Muzikaliteit' : 'Show'}
+                    </span>
                   </button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null
         ))}
       </div>
     </div>
