@@ -40,7 +40,7 @@ const HomePage: React.FC = () => {
           <div className="container mx-auto text-center">
             <h1 className="text-3xl sm:text-4xl font-bold mb-2">Bemmelse Dweildag</h1>
             <p className="text-lg sm:text-xl mb-6">Welkom bij de jury-app voor de Bemmelse Dweildag 2025</p>
-            <div className="inline-flex space-x-2">v
+            <div className="inline-flex space-x-2">
               <button 
                 onClick={() => navigate('/jury')}
                 className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"

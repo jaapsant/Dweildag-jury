@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage';
 import JuryPage from './pages/JuryPage';
 import JuryScoring from './pages/JuryScoring';
 import ScoresPage from './pages/ScoresPage';
+import TopBandsPage from './pages/TopBandsPage';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
               <Route path="/jury" element={<JuryPage />} />
               <Route path="/jury/:juryId" element={<JuryScoring />} />
               <Route path="/scores" element={<ScoresPage />} />
+              <Route path="/top-bands" element={<TopBandsPage />} />
             </Routes>
           </div>
           <Footer />
