@@ -9,30 +9,35 @@ import JuryScoring from './pages/JuryScoring';
 import ScoresPage from './pages/ScoresPage';
 import TopBandsPage from './pages/TopBandsPage';
 import ManageJuryPage from './pages/ManageJuryPage';
+import ManageBandsPage from './pages/ManageBandsPage';
 import { JuryProvider } from './context/JuryContext';
+import { BandProvider } from './context/BandContext';
 
 function App() {
   return (
-    <JuryProvider>
-      <ScoreProvider>
-        <Router>
-          <div className="flex flex-col min-h-screen bg-gray-100">
-            <Header />
-            <div className="flex-1 pb-16 md:pb-0"> {/* Add padding to bottom for mobile navigation */}
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/jury" element={<JuryPage />} />
-                <Route path="/jury/:juryId" element={<JuryScoring />} />
-                <Route path="/scores" element={<ScoresPage />} />
-                <Route path="/top-bands" element={<TopBandsPage />} />
-                <Route path="/manage-jury" element={<ManageJuryPage />} />
-              </Routes>
+    <BandProvider>
+      <JuryProvider>
+        <ScoreProvider>
+          <Router>
+            <div className="flex flex-col min-h-screen bg-gray-100">
+              <Header />
+              <div className="flex-1 pb-16 md:pb-0"> {/* Add padding to bottom for mobile navigation */}
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/jury" element={<JuryPage />} />
+                  <Route path="/jury/:juryId" element={<JuryScoring />} />
+                  <Route path="/scores" element={<ScoresPage />} />
+                  <Route path="/top-bands" element={<TopBandsPage />} />
+                  <Route path="/manage-jury" element={<ManageJuryPage />} />
+                  <Route path="/manage-bands" element={<ManageBandsPage />} />
+                </Routes>
+              </div>
+              <Footer />
             </div>
-            <Footer />
-          </div>
-        </Router>
-      </ScoreProvider>
-    </JuryProvider>
+          </Router>
+        </ScoreProvider>
+      </JuryProvider>
+    </BandProvider>
   );
 }
 

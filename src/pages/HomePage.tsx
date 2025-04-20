@@ -1,19 +1,21 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, Award } from 'lucide-react';
-import { stages, bands } from '../data/initialData';
+import { juryMembers, stages } from '../data/initialData';
 import { useScores } from '../context/ScoreContext';
 import { useJury } from '../context/JuryContext';
+import { useBands } from '../context/BandContext';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { getBandTotalScores, isLoading: scoresLoading, error: scoresError, isPerformanceScored, scores } = useScores();
   const { juryMembers, isLoading: juryLoading, error: juryError } = useJury();
+  const { bands, isLoading: bandsLoading, error: bandsError } = useBands();
   
   // Combine potential loading states
-  const isLoading = scoresLoading || juryLoading;
+  const isLoading = scoresLoading || juryLoading || bandsLoading;
   // Combine potential errors
-  const error = scoresError || juryError;
+  const error = scoresError || juryError || bandsError;
 
   // Group jury members by stageId
   const juryByStage = !isLoading && !error ? juryMembers.reduce((acc, juryMember) => {
@@ -94,26 +96,11 @@ const HomePage: React.FC = () => {
                         <h3 className="text-lg font-semibold mb-3 p-2 bg-blue-50 rounded-t-md text-blue-800">{stage.name}</h3>
                         <div className="space-y-2 border border-t-0 rounded-b-md p-3">
                           {sortedMembers.length > 0 ? sortedMembers.map(member => {
-                            // --- Recalculate completedBandCount specifically for 'member' ---
-                            let completedBandCount = 0;
-                            if (scores && scores.length > 0 && bands.length > 0) { 
-                                // Iterate through each band to check completion status *for this member*
-                                bands.forEach(band => {
-                                    // Filter scores for *this specific member* AND *this specific band*
-                                    const memberBandScores = scores.filter(s => 
-                                        String(s.juryMemberId) === String(member.id) &&
-                                        s.bandId === band.id &&
-                                        s.stageId === member.stageId // Also ensure stage matches
-                                    );
-                                    // If count meets expectation for this band, increment counter
-                                    if (memberBandScores.length >= expectedScoresPerBandForm) {
-                                        completedBandCount++;
-                                    }
-                                });
-                            }
-                            // --- End Calculation ---
-
-                            const isComplete = totalBands > 0 && completedBandCount === totalBands;
+                            // Use dynamic 'bands' array here
+                            const scoredCount = bands.filter(band => 
+                                isPerformanceScored(band.id, member.stageId, member.id)
+                            ).length;
+                            const isComplete = totalBands > 0 && scoredCount === totalBands;
 
                             return (
                               <button
@@ -127,8 +114,8 @@ const HomePage: React.FC = () => {
                                   {isComplete ? (
                                     <Check size={16} className="ml-2 text-green-600" />
                                   ) : (
-                                    <span className="ml-2 text-xs text-gray-400" title={`${completedBandCount} van ${totalBands} bands beoordeeld`}>
-                                      ({completedBandCount}/{totalBands})
+                                    <span className="ml-2 text-xs text-gray-400" title={`${scoredCount} van ${totalBands} bands beoordeeld`}>
+                                      ({scoredCount}/{totalBands})
                                     </span>
                                   )}
                                 </div>

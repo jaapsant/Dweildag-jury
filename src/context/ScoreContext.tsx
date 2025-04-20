@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Score, PerformanceScore, BandTotalScore, JuryMember } from '../types';
-import { bands, stages } from '../data/initialData';
+import { stages } from '../data/initialData';
 import { db } from '../firebase'; // Import the initialized Firestore instance
 import { 
   collection, 
@@ -12,6 +12,7 @@ import {
   updateDoc
 } from "firebase/firestore";
 import { useJury } from './JuryContext';
+import { useBands } from './BandContext'; // Import useBands
 
 interface ScoreContextType {
   scores: Score[];
@@ -36,15 +37,18 @@ export const ScoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Use the Jury context to get juryMembers data
-  // Note: This assumes JuryProvider finishes loading before ScoreProvider needs this data.
-  // More robust loading handling might be needed if ScoreProvider loads first.
-  const { juryMembers, isLoading: juryLoading } = useJury(); 
+  const { juryMembers, isLoading: juryLoading, error: juryError } = useJury();
+  const { bands, isLoading: bandsLoading, error: bandsError } = useBands(); // Use bands context
 
-  // Update main loading state based on both contexts
+  // Update main loading state based on all contexts
   useEffect(() => {
-      setIsLoading(juryLoading || scores === null); // Adjust loading condition
-  }, [juryLoading, scores]);
+      setIsLoading(juryLoading || bandsLoading || scores === null); // Check all loading states
+  }, [juryLoading, bandsLoading, scores]);
+
+  // Update error state based on all contexts
+  useEffect(() => {
+      setError(juryError || bandsError || null); // Show first error encountered
+  }, [juryError, bandsError]);
 
   // Load scores from Firestore on component mount
   useEffect(() => {
@@ -213,11 +217,16 @@ export const ScoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const getBandTotalScores = (): BandTotalScore[] => {
-    return bands.map(band => {
-      // Initialize overall totals for this band
+    // Don't run if dependent data isn't loaded yet
+    if (isLoading || error || bands.length === 0) {
+        return []; // Return empty array if data not ready
+    }
+
+    // Use dynamic 'bands' array from context
+    return bands.map(band => { 
       let totalMuzikaliteitOverall = 0;
       let totalShowOverall = 0;
-      let totalScoreOverall = 0; // Keep track of overall score too
+      let totalScoreOverall = 0; 
 
       const bandTotalScore: BandTotalScore = {
         bandId: band.id,
@@ -229,7 +238,8 @@ export const ScoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
 
       stages.forEach(stage => {
-        const performanceScore = getPerformanceScores(band.id, stage.id);
+        // getPerformanceScores now also depends on juryMembers being loaded
+        const performanceScore = getPerformanceScores(band.id, stage.id); 
         if (performanceScore) {
           bandTotalScore.stageScores[stage.id] = {
             muzikaliteit: performanceScore.totalMuzikaliteit,

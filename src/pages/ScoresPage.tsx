@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useScores } from '../context/ScoreContext';
 import { useJury } from '../context/JuryContext';
-import { stages, categories, bands } from '../data/initialData';
+import { useBands } from '../context/BandContext';
+import { stages, categories } from '../data/initialData';
 import { TrendingUp, ChevronDown, ChevronUp, Award, Check, ArrowUp, ArrowDown } from 'lucide-react';
 
 // Define possible sort columns
@@ -11,10 +12,11 @@ type SortDirection = 'asc' | 'desc';
 const ScoresPage: React.FC = () => {
   const { getBandTotalScores, getBandScoreByStage, scores, isLoading: scoresLoading, error: scoresError } = useScores();
   const { juryMembers, isLoading: juryLoading, error: juryError } = useJury();
+  const { bands, isLoading: bandsLoading, error: bandsError } = useBands();
   
   // Combine loading/error
-  const isLoading = scoresLoading || juryLoading;
-  const error = scoresError || juryError;
+  const isLoading = scoresLoading || juryLoading || bandsLoading;
+  const error = scoresError || juryError || bandsError;
 
   const [expandedBands, setExpandedBands] = useState<Record<number, boolean>>({});
   
@@ -130,7 +132,7 @@ const ScoresPage: React.FC = () => {
         </h1>
         
         <div className="text-sm text-gray-500">
-          <p>{initialBandScores.length} bands | {stages.length} podia</p>
+          <p>{bands.length} bands | {stages.length} podia</p>
         </div>
       </div>
       

@@ -1,9 +1,8 @@
-import { Band, Category, Stage } from '../types';
+import { /* Removed Band, */ Category, Stage } from '../types';
 
-export const bands: Band[] = Array.from({ length: 20 }, (_, i) => ({
-  id: i + 1,
-  name: `Band ${i + 1}`,
-}));
+// ---- REMOVED bands array ----
+// export const bands: Band[] = Array.from({ length: 20 }, (_, i) => ({ ... }));
+// ---- END REMOVAL ----
 
 export const stages: Stage[] = [
   { id: 1, name: 'Hoofdpodium' },
@@ -11,6 +10,8 @@ export const stages: Stage[] = [
   { id: 3, name: 'Het Wapen' },
   { id: 4, name: 'Marktplein' },
 ];
+
+// Jury members are already removed
 
 export const categories: Category[] = [
   // Muzikaliteit categories

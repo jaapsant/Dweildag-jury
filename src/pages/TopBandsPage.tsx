@@ -2,17 +2,18 @@ import React from 'react';
 import { Award, Info, CheckCircle2, Check } from 'lucide-react'; // Import necessary icons
 import { useScores } from '../context/ScoreContext'; // Import useScores hook
 import { useJury } from '../context/JuryContext'; // Import useJury hook
-import { bands } from '../data/initialData'; // Import necessary data
+import { useBands } from '../context/BandContext'; // Import useBands
 
 const TopBandsPage: React.FC = () => {
   // Fetch necessary data and states from context
   const { getBandTotalScores, isLoading: scoresLoading, error: scoresError, scores } = useScores(); 
   // Get jury data
   const { juryMembers, isLoading: juryLoading, error: juryError } = useJury(); 
+  const { bands, isLoading: bandsLoading, error: bandsError } = useBands(); // Use bands context
   
   // Combine loading/error
-  const isLoading = scoresLoading || juryLoading;
-  const error = scoresError || juryError;
+  const isLoading = scoresLoading || juryLoading || bandsLoading;
+  const error = scoresError || juryError || bandsError;
   
   // Get ALL band scores first for calculating maxes
   const allBandScores = (!isLoading && !error) ? getBandTotalScores() : [];

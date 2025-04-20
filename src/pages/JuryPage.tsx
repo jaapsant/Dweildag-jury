@@ -1,17 +1,19 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
-import { stages, bands } from '../data/initialData';
+import { stages } from '../data/initialData';
 import { useScores } from '../context/ScoreContext';
 import { useJury } from '../context/JuryContext';
+import { useBands } from '../context/BandContext';
 
 const JuryPage: React.FC = () => {
   const navigate = useNavigate();
-  const { isLoading: scoresLoading, scores } = useScores();
+  const { isLoading: scoresLoading, scores, isPerformanceScored } = useScores();
   const { juryMembers, isLoading: juryLoading, error: juryError } = useJury();
+  const { bands, isLoading: bandsLoading, error: bandsError } = useBands();
 
-  const isLoading = scoresLoading || juryLoading;
-  const error = juryError;
+  const isLoading = scoresLoading || juryLoading || bandsLoading;
+  const error = juryError || bandsError;
 
   const juryByStage = !isLoading && !error ? juryMembers.reduce((acc, juryMember) => {
     const stageId = juryMember.stageId;
@@ -22,7 +24,7 @@ const JuryPage: React.FC = () => {
     return acc;
   }, {} as Record<string, typeof juryMembers>) : {};
 
-  const totalBands = bands.length;
+  const totalBands = !isLoading && !error ? bands.length : 0;
   const expectedScoresPerBandForm = 6;
 
   return (
@@ -33,7 +35,7 @@ const JuryPage: React.FC = () => {
         Selecteer hieronder je naam om te beginnen met het beoordelen van bands op jouw podium.
       </p>
       
-      {isLoading && <p className="text-center text-gray-500 py-10">Juryleden laden...</p>}
+      {isLoading && <p className="text-center text-gray-500 py-10">Gegevens laden...</p>}
       {error && <p className="text-center text-red-600 py-10">Fout bij laden: {error}</p>}
 
       {!isLoading && !error && (

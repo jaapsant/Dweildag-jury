@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Check, AlertTriangle, Eye, X, Pencil } from 'lucide-react';
-import { bands } from '../data/initialData';
 import { categories, stages } from '../data/initialData';
 import { Score, PerformanceScore } from '../types';
 import { useScores } from '../context/ScoreContext';
 import { useJury } from '../context/JuryContext';
+import { useBands } from '../context/BandContext';
 import BandSelector from '../components/BandSelector';
 import RadioButtonGroup from '../components/RadioButtonGroup';
 
@@ -14,9 +14,10 @@ const JuryScoring: React.FC = () => {
   const navigate = useNavigate();
   const { addMultipleScores, isLoading: scoresLoading, error: scoresError, getPerformanceScores, scores } = useScores();
   const { juryMembers, isLoading: juryLoading, error: juryError } = useJury();
+  const { bands, isLoading: bandsLoading, error: bandsError } = useBands();
   
-  const isLoading = scoresLoading || juryLoading;
-  const error = scoresError || juryError;
+  const isLoading = scoresLoading || juryLoading || bandsLoading;
+  const error = scoresError || juryError || bandsError;
 
   const juryMember = !isLoading && !error ? juryMembers.find(j => j.id === juryId) : undefined;
   const stage = !isLoading && juryMember ? stages.find(s => s.id === juryMember.stageId) : null;
@@ -29,6 +30,8 @@ const JuryScoring: React.FC = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isReadOnly, setIsReadOnly] = useState<boolean>(false);
   const [viewingScores, setViewingScores] = useState<PerformanceScore | null>(null);
+
+  const expectedScoresPerBandForm = 6;
 
   useEffect(() => {
     if (!isReadOnly) {
@@ -49,12 +52,11 @@ const JuryScoring: React.FC = () => {
   }, [isReadOnly, selectedBandId, juryMember, getPerformanceScores, isLoading, error]);
 
   useEffect(() => {
-    if (!juryMember || isLoading || error || !scores) {
+    if (!juryMember || isLoading || error || !scores || !bands) {
         setScoredBands([]);
         return;
     }
     
-    const expectedScoresPerBandForm = 6;
     const scored: number[] = [];
     
     bands.forEach(band => {
@@ -188,7 +190,7 @@ const JuryScoring: React.FC = () => {
     selectedBandId && 
     filteredCategories.length === Object.keys(categoryScores).length;
 
-  const availableBands = bands.filter(band => !scoredBands.includes(band.id));
+  const availableBands = !isLoading && !error ? bands.filter(band => !scoredBands.includes(band.id)) : [];
 
   const isSubmitDisabled = !isFormComplete || isSaving || submitted || isReadOnly;
 
@@ -200,6 +202,8 @@ const JuryScoring: React.FC = () => {
   } else if (!isReadOnly) {
       totalScoreToShow = Object.values(categoryScores).reduce((sum, score) => sum + (score || 0), 0);
   }
+
+  const currentBandName = bands.find(b => b.id === selectedBandId)?.name;
 
   return (
     <div className="container mx-auto px-4 py-8 pb-20 md:pb-8">
@@ -277,7 +281,7 @@ const JuryScoring: React.FC = () => {
             <div className="mb-6 border-t pt-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold">
-                    {isReadOnly ? 'Bekeken Beoordeling' : 'Beoordeling'} voor {bands.find(b => b.id === selectedBandId)?.name}
+                    {isReadOnly ? 'Bekeken Beoordeling' : 'Beoordeling'} voor {currentBandName ?? `Band ${selectedBandId}`}
                 </h2>
                 <div className="flex items-center gap-3">
                   {isReadOnly && totalScoreToShow !== null && (
