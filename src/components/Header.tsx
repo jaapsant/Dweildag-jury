@@ -32,6 +32,12 @@ const Header: React.FC = () => {
             >
               <span>Scores</span>
             </button>
+            <button 
+              onClick={() => navigate('/top-bands')}
+              className={`${location.pathname === '/top-bands' ? 'text-orange-300 font-semibold' : 'text-white'} hover:text-orange-200 transition-colors`}
+            >
+              <span>Top 10</span>
+            </button>
           </nav>
           
           <div className="flex md:hidden">
@@ -43,25 +49,31 @@ const Header: React.FC = () => {
       </div>
       
       {/* Mobile menu at bottom of screen */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#004380] shadow-lg z-10">
-        <div className="flex justify-around items-center py-2">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#004380] shadow-lg z-10 border-t border-blue-700">
+        <div className="flex justify-between items-center py-2 px-2">
           <button 
             onClick={() => navigate('/')}
-            className={`flex flex-col items-center px-4 py-2 ${location.pathname === '/' ? 'text-orange-300' : 'text-white'}`}
+            className={`flex flex-col items-center px-3 py-1 ${location.pathname === '/' ? 'text-orange-300' : 'text-white'}`}
           >
             <span className="text-xs mt-1">Home</span>
           </button>
           <button 
             onClick={() => navigate('/jury')}
-            className={`flex flex-col items-center px-4 py-2 ${location.pathname.includes('/jury') ? 'text-orange-300' : 'text-white'}`}
+            className={`flex flex-col items-center px-3 py-1 ${location.pathname.includes('/jury') ? 'text-orange-300' : 'text-white'}`}
           >
             <span className="text-xs mt-1">Jury</span>
           </button>
           <button 
             onClick={() => navigate('/scores')}
-            className={`flex flex-col items-center px-4 py-2 ${location.pathname === '/scores' ? 'text-orange-300' : 'text-white'}`}
+            className={`flex flex-col items-center px-3 py-1 ${location.pathname === '/scores' ? 'text-orange-300' : 'text-white'}`}
           >
             <span className="text-xs mt-1">Scores</span>
+          </button>
+          <button 
+            onClick={() => navigate('/top-bands')}
+            className={`flex flex-col items-center px-3 py-1 ${location.pathname === '/top-bands' ? 'text-orange-300' : 'text-white'}`}
+          >
+            <span className="text-xs mt-1">Top 10</span>
           </button>
         </div>
       </div>
