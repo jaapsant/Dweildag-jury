@@ -138,7 +138,7 @@ const ScoresPage: React.FC = () => {
           const url = URL.createObjectURL(blob);
           link.setAttribute('href', url);
           // Change download filename
-          link.setAttribute('download', 'dweildag-updates.sql'); 
+          link.setAttribute('download', 'dweildag-updates.txt'); 
           link.style.visibility = 'hidden';
           document.body.appendChild(link);
           link.click();
