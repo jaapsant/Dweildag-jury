@@ -3,7 +3,7 @@ import { useScores } from '../context/ScoreContext';
 import { useJury } from '../context/JuryContext';
 import { useBands } from '../context/BandContext';
 import { stages, categories } from '../data/initialData';
-import { TrendingUp, ChevronDown, ChevronUp, Award, Check, ArrowUp, ArrowDown } from 'lucide-react';
+import { TrendingUp, ChevronDown, ChevronUp, Award, Check, ArrowUp, ArrowDown, Download } from 'lucide-react';
 
 // Define possible sort columns
 type SortColumn = 'totalScore' | 'totalMuzikaliteit' | 'totalShow' | 'rank';
@@ -32,9 +32,11 @@ const ScoresPage: React.FC = () => {
   const totalExpectedForms = !isLoading && !error ? juryMembers.length : 0; 
 
   // Calculate max scores (remains the same)
+  let maxTotalScore = 0;
   let maxMuzScore = 0;
   let maxShowScore = 0;
   if (initialBandScores.length > 0) {
+      maxTotalScore = Math.max(...initialBandScores.map(b => b.totalScore));
       maxMuzScore = Math.max(...initialBandScores.map(b => b.totalMuzikaliteit));
       maxShowScore = Math.max(...initialBandScores.map(b => b.totalShow));
   }
@@ -102,6 +104,52 @@ const ScoresPage: React.FC = () => {
     }));
   };
   
+  // --- SQL Generation Logic ---
+  const generateSqlUpdates = (): string => {
+      let sqlStatements = '';
+      const currentYear = new Date().getFullYear(); // Get the current year
+
+      sortedBandScores.forEach((band, index) => {
+          // Determine rank - only meaningful if sorted by totalScore desc
+          const rank = (sortColumn === 'totalScore' && sortDirection === 'desc') ? index + 1 : 'NULL'; 
+          
+          // Determine winner flags based on max scores
+          const isWinner = band.totalScore === maxTotalScore && maxTotalScore > 0 ? 1 : 0;
+          const isWinnerMuz = band.totalMuzikaliteit === maxMuzScore && maxMuzScore > 0 ? 1 : 0;
+          const isWinnerShow = band.totalShow === maxShowScore && maxShowScore > 0 ? 1 : 0;
+
+          // Construct the SQL UPDATE statement
+          // Using the current year dynamically
+          const updateQuery = `UPDATE tblDeelnemers SET nrRangschikking = ${rank}, nrAantalPunten = ${band.totalScore}, nrPuntenMuzikaal = ${band.totalMuzikaliteit}, nrPuntenShow = ${band.totalShow}, bWinnaar= ${isWinner}, bWinnaarMuzikaal = ${isWinnerMuz}, bWinnaarShow = ${isWinnerShow} WHERE jaar="${currentYear}" AND nrWedstrijdnr = ${band.bandId};`;
+          
+          sqlStatements += updateQuery + '\r\n'; // Add statement and newline
+      });
+
+      return sqlStatements;
+  };
+
+  const handleDownloadSql = () => {
+      const sqlData = generateSqlUpdates();
+      // Use text/plain for the blob type, change filename extension
+      const blob = new Blob([sqlData], { type: 'text/plain;charset=utf-8;' }); 
+      
+      const link = document.createElement('a');
+      if (link.download !== undefined) { 
+          const url = URL.createObjectURL(blob);
+          link.setAttribute('href', url);
+          // Change download filename
+          link.setAttribute('download', 'dweildag-updates.sql'); 
+          link.style.visibility = 'hidden';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url); 
+      } else {
+          alert("SQL download wordt niet ondersteund door uw browser.");
+      }
+  };
+  // --- End SQL Generation Logic ---
+
   if (isLoading) {
       return <div className="container mx-auto px-4 py-8 text-center">Laden...</div>;
   }
@@ -131,8 +179,19 @@ const ScoresPage: React.FC = () => {
           Festival Ranglijst
         </h1>
         
-        <div className="text-sm text-gray-500">
-          <p>{bands.length} bands | {stages.length} podia</p>
+        <div className='flex items-center space-x-4'>
+            <div className="text-sm text-gray-500">
+              <p>{bands.length} bands | {stages.length} podia</p>
+            </div>
+             <button 
+                onClick={handleDownloadSql}
+                disabled={sortedBandScores.length === 0}
+                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Download update queries als SQL"
+             >
+                 <Download size={16} className="mr-1.5" />
+                 Download SQL
+             </button>
         </div>
       </div>
       
@@ -141,13 +200,13 @@ const ScoresPage: React.FC = () => {
           <div className="col-span-1">#</div>
           <div className="col-span-4">Band</div>
           <div className="col-span-2 text-right">
-            <SortableHeader title="Muz." column="totalMuzikaliteit" />
+            <SortableHeader title="Totaal" column="totalScore" />
+          </div>
+          <div className="col-span-2 text-right">
+             <SortableHeader title="Muz." column="totalMuzikaliteit" />
           </div>
           <div className="col-span-2 text-right">
              <SortableHeader title="Show" column="totalShow" />
-          </div>
-          <div className="col-span-2 text-right">
-             <SortableHeader title="Totaal" column="totalScore" />
           </div>
           <div className="col-span-1"></div>
         </div>
@@ -188,6 +247,9 @@ const ScoresPage: React.FC = () => {
                         )}
                       </span>
                     </div>
+                    <div className="col-span-2 text-right font-bold text-[#004380] text-base">
+                      {band.totalScore}
+                    </div>
                     <div className="col-span-2 text-right font-medium text-gray-700">
                       <span className="flex items-center justify-end">
                         {band.totalMuzikaliteit}
@@ -203,9 +265,6 @@ const ScoresPage: React.FC = () => {
                           <Award size={14} className="ml-1 text-yellow-500" title="Hoogste Show Score" />
                         )}
                       </span>
-                    </div>
-                    <div className="col-span-2 text-right font-bold text-[#004380] text-base">
-                      {band.totalScore}
                     </div>
                     <div className="col-span-1 flex justify-end">
                       {expandedBands[band.bandId] ? (
