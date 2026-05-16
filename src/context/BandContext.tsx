@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Band } from '../types'; // Assuming Band type is defined with id: number
 import { db } from '../firebase'; 
-import { collection, query, getDocs, addDoc, onSnapshot, QuerySnapshot, DocumentData, orderBy, doc, updateDoc } from "firebase/firestore"; 
+import { collection, query, getDocs, addDoc, onSnapshot, QuerySnapshot, DocumentData, orderBy, doc, updateDoc, deleteDoc } from "firebase/firestore";
 
 // Extend Band type used internally in context if needed
 interface BandWithFirestoreId extends Band {
@@ -12,6 +12,7 @@ interface BandContextType {
   bands: BandWithFirestoreId[]; // Use extended type internally
   addBand: (bandData: Omit<Band, 'id'> & { id: number }) => Promise<void>; // Expect numeric ID on add
   updateBand: (firestoreId: string, updatedData: Pick<Band, 'name'>) => Promise<void>; // Add update function type - only updating name for now
+  deleteBand: (firestoreId: string) => Promise<void>;
   isLoading: boolean;
   error: string | null;
 }
@@ -94,14 +95,30 @@ export const BandProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError("Kon bandnaam niet bijwerken.");
       throw e; 
     }
-  }, []); 
+  }, []);
   // --- End update function ---
 
+  // --- Function to delete a band ---
+  const deleteBand = useCallback(async (firestoreId: string) => {
+    setError(null);
+    try {
+      console.log(`Deleting band ${firestoreId}`);
+      await deleteDoc(doc(db, "bands", firestoreId));
+      console.log(`Band ${firestoreId} deleted successfully.`);
+    } catch (e) {
+      console.error(`Error deleting band ${firestoreId}:`, e);
+      setError("Kon band niet verwijderen.");
+      throw e;
+    }
+  }, []);
+  // --- End delete function ---
+
   return (
-    <BandContext.Provider value={{ 
-      bands, 
+    <BandContext.Provider value={{
+      bands,
       addBand,
       updateBand, // Provide the new function
+      deleteBand,
       isLoading,
       error
     }}>

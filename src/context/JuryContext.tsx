@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { JuryMember } from '../types'; // Assuming JuryMember type is defined
 import { db } from '../firebase'; // Import Firestore instance
-import { collection, query, getDocs, addDoc, onSnapshot, QuerySnapshot, DocumentData, doc, updateDoc } from "firebase/firestore";
+import { collection, query, getDocs, addDoc, onSnapshot, QuerySnapshot, DocumentData, doc, updateDoc, deleteDoc } from "firebase/firestore";
 
 interface JuryContextType {
   juryMembers: JuryMember[];
   addJuryMember: (memberData: Omit<JuryMember, 'id'>) => Promise<void>; // Exclude ID for adding
   updateJuryMember: (id: string, updatedData: Partial<Pick<JuryMember, 'name' | 'type' | 'stageId'>>) => Promise<void>;
+  deleteJuryMember: (id: string) => Promise<void>;
   isLoading: boolean;
   error: string | null;
 }
@@ -87,11 +88,27 @@ export const JuryProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []); // Empty dependency array, relies on closure for db reference
   // --- End update function ---
 
+  // --- Function to delete a jury member ---
+  const deleteJuryMember = useCallback(async (id: string) => {
+      setError(null);
+      try {
+          console.log(`Deleting jury member ${id}`);
+          await deleteDoc(doc(db, "juryMembers", id));
+          console.log(`Jury member ${id} deleted successfully.`);
+      } catch (e) {
+          console.error(`Error deleting jury member ${id}:`, e);
+          setError("Kon jurylid niet verwijderen.");
+          throw e;
+      }
+  }, []);
+  // --- End delete function ---
+
   return (
-    <JuryContext.Provider value={{ 
-      juryMembers, 
+    <JuryContext.Provider value={{
+      juryMembers,
       addJuryMember,
       updateJuryMember,
+      deleteJuryMember,
       isLoading,
       error
     }}>

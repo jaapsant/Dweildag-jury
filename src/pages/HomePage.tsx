@@ -51,7 +51,7 @@ const HomePage: React.FC = () => {
         <div className="bg-gradient-to-b from-[#004380] to-[#003366] text-white py-12 px-4">
           <div className="container mx-auto text-center">
             <h1 className="text-3xl sm:text-4xl font-bold mb-2">Bemmelse Dweildag</h1>
-            <p className="text-lg sm:text-xl mb-6">Welkom bij de jury-app voor de Bemmelse Dweildag 2025</p>
+            <p className="text-lg sm:text-xl mb-6">Welkom bij de jury-app voor de Bemmelse Dweildag 2026</p>
             <div className="inline-flex space-x-2">
               <button 
                 onClick={() => navigate('/jury')}
