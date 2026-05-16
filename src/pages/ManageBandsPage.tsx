@@ -103,6 +103,7 @@ const ManageBandsPage: React.FC = () => {
       <h1 className="text-2xl font-bold text-[#004380] mb-6">Bewerk Bandnamen</h1>
 
       {/* --- Add Band Form --- */}
+      {bands.length < 20 && (
       <div className="bg-white rounded-lg shadow-md p-4 max-w-lg mx-auto mb-6">
           <h2 className="text-lg font-semibold mb-3 text-[#004380]">Band toevoegen</h2>
           <form onSubmit={handleAddBand} className="flex flex-col sm:flex-row sm:items-end gap-2">
@@ -138,6 +139,7 @@ const ManageBandsPage: React.FC = () => {
           </form>
           {addError && <p className="text-red-600 text-xs mt-2">{addError}</p>}
       </div>
+      )}
 
       {/* --- Band List (with editing) --- */}
       <div className="bg-white rounded-lg shadow-md p-6 max-w-lg mx-auto">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useJury } from '../context/JuryContext';
 import { stages } from '../data/initialData'; // Keep using static stages for now
 import { JuryMember } from '../types';
@@ -34,9 +34,50 @@ const ManageJuryPage: React.FC = () => {
   const [isAdding, setIsAdding] = useState<boolean>(false);
   const [addError, setAddError] = useState<string | null>(null);
 
+  // Each (stageId, type) pair may only have one jury member.
+  const takenPairs = useMemo(
+      () => new Set(juryMembers.map(m => `${m.stageId}|${m.type}`)),
+      [juryMembers]
+  );
+  const availableStagesByType = useMemo(() => ({
+      muzikaliteit: stages.filter(s => !takenPairs.has(`${s.id}|muzikaliteit`)),
+      show: stages.filter(s => !takenPairs.has(`${s.id}|show`)),
+  }), [takenPairs]);
+  const availableTypes = useMemo(() => {
+      const types: Array<'muzikaliteit' | 'show'> = [];
+      if (availableStagesByType.muzikaliteit.length > 0) types.push('muzikaliteit');
+      if (availableStagesByType.show.length > 0) types.push('show');
+      return types;
+  }, [availableStagesByType]);
+
+  // Keep selected type/stage valid as juryMembers change.
+  useEffect(() => {
+      if (availableTypes.length === 0) return;
+      if (!availableTypes.includes(newType)) {
+          setNewType(availableTypes[0]);
+          return;
+      }
+      const stagesForType = availableStagesByType[newType];
+      if (!stagesForType.some(s => s.id === newStageId)) {
+          setNewStageId(stagesForType[0].id);
+      }
+  }, [availableTypes, availableStagesByType, newType, newStageId]);
+
+  const handleTypeChange = (type: 'muzikaliteit' | 'show') => {
+      setNewType(type);
+      const stagesForType = availableStagesByType[type];
+      if (stagesForType.length > 0 && !stagesForType.some(s => s.id === newStageId)) {
+          setNewStageId(stagesForType[0].id);
+      }
+  };
+
   const handleAddMember = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!newName.trim() || isAdding) return;
+      if (takenPairs.has(`${newStageId}|${newType}`)) {
+          setAddError("Er is al een jurylid voor dit podium en deze categorie.");
+          return;
+      }
       setIsAdding(true);
       setAddError(null);
       try {
@@ -103,6 +144,7 @@ const ManageJuryPage: React.FC = () => {
       <h1 className="text-2xl font-bold text-[#004380] mb-6">Bewerk Jurynamen</h1>
 
       {/* --- Add Jury Member Form --- */}
+      {juryMembers.length < 8 && (
       <div className="max-w-2xl mx-auto mb-6">
           <form onSubmit={handleAddMember} className="bg-white rounded-lg shadow-md p-4">
               <h2 className="text-lg font-semibold mb-3 text-[#004380]">Jurylid toevoegen</h2>
@@ -121,11 +163,11 @@ const ManageJuryPage: React.FC = () => {
                       <label className="block text-xs text-gray-600 mb-1">Type</label>
                       <select
                           value={newType}
-                          onChange={(e) => setNewType(e.target.value as 'muzikaliteit' | 'show')}
+                          onChange={(e) => handleTypeChange(e.target.value as 'muzikaliteit' | 'show')}
                           className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       >
-                          <option value="muzikaliteit">Muzikaliteit</option>
-                          <option value="show">Show</option>
+                          {availableTypes.includes('muzikaliteit') && <option value="muzikaliteit">Muzikaliteit</option>}
+                          {availableTypes.includes('show') && <option value="show">Show</option>}
                       </select>
                   </div>
                   <div>
@@ -135,7 +177,7 @@ const ManageJuryPage: React.FC = () => {
                           onChange={(e) => setNewStageId(Number(e.target.value))}
                           className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       >
-                          {stages.map(s => (
+                          {availableStagesByType[newType].map(s => (
                               <option key={s.id} value={s.id}>{s.name}</option>
                           ))}
                       </select>
@@ -152,6 +194,7 @@ const ManageJuryPage: React.FC = () => {
               {addError && <p className="text-red-600 text-xs mt-2">{addError}</p>}
           </form>
       </div>
+      )}
 
       {/* --- Jury Member List (Grouped) --- */}
       <div className="max-w-2xl mx-auto">
